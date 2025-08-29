@@ -1,3 +1,4 @@
+import keras
 import keras.ops as K
 import pytest
 from jacobinet import get_backward_layer as get_backward
@@ -10,7 +11,7 @@ from .conftest import compute_backward_layer, serialize_model
 def _test_backward_activation(layer):
     input_shape = (32,)
     model = Sequential([layer])
-    model(K.ones([1] + list(input_shape)))
+    model(K.ones([1] + list(input_shape), dtype=keras.config.floatx()))
 
     backward_layer = get_backward(layer)
 

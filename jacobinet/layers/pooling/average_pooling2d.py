@@ -196,7 +196,9 @@ class BackwardAveragePooling2D(BackwardLinearLayer):
             output_dim_wo_batch_c_1 = (1,) + self.output_dim_wo_batch[1:]
 
         # shape of transposed input
-        input_shape_t = list(layer_t(K.ones((1,) + output_dim_wo_batch_c_1)).shape[1:])
+        input_shape_t = list(
+            layer_t(K.ones((1,) + output_dim_wo_batch_c_1, dtype=keras.config.floatx())).shape[1:]
+        )
 
         if self.layer.padding == "valid":
             input_shape = self.input_dim_wo_batch

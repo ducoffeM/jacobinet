@@ -55,7 +55,9 @@ class BackwardConv3D(BackwardLinearLayer):
         input_shape_wo_batch = self.input_dim_wo_batch
         # input_shape_wo_batch_wo_pad = list(layer_backward(layer.output)[0].shape)
         input_shape_wo_batch_wo_pad = list(
-            layer_backward(K.ones([1] + self.output_dim_wo_batch))[0].shape
+            layer_backward(K.ones([1] + self.output_dim_wo_batch, dtype=keras.config.floatx()))[
+                0
+            ].shape
         )
 
         if layer.data_format == "channels_first":
