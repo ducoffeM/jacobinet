@@ -80,7 +80,10 @@ def get_backward_sequential(
         if gradient is None:
             backward_model = BackwardSequential(layers=layers_backward[::-1])
             # init shape
-            backward_model(model.outputs)
+            if len(model.outputs) == 1:
+                backward_model(model.outputs[0])  # build correctly the sequential model
+            else:
+                backward_model(model.outputs)  # Sequential.build() does nothing sadly
             return backward_model
         elif grad_input or len(extra_inputs):
             output = None

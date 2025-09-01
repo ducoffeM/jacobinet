@@ -67,12 +67,8 @@ class BackwardSequential(keras.Sequential):
         ```
     """
 
-    def __init__(self, layers=None, trainable=True, name=None):
-        self.is_linear = True
-        self.n_input = 1
-        if len(self.layers):
-            self.is_linear = min([is_linear_layer(layer) for layer in self.layers])
-        super().__init__(layers=layers, trainable=trainable, name=name)
+    n_input = 1
+    is_linear = True
 
     def add(self, layer, rebuild=True):
         """Adds a layer instance on top of the layer stack.

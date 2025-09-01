@@ -61,7 +61,9 @@ class BackwardAveragePooling1D(BackwardLinearLayer):
 
         # shape of transposed input
         # input_shape_t = list(layer_t(self.layer.output).shape[1:])
-        input_shape_t = list(layer_t(K.ones((1,) + self.output_dim_wo_batch)).shape[1:])
+        input_shape_t = list(
+            layer_t(K.ones((1,) + self.output_dim_wo_batch, dtype=keras.config.floatx())).shape[1:]
+        )
         # input_shape = list(self.layer.input.shape[1:])
         input_shape = self.input_dim_wo_batch
 
@@ -81,7 +83,7 @@ class BackwardAveragePooling1D(BackwardLinearLayer):
         else:
             self.model = Sequential([layer_t])
         # self.model(self.layer.output)
-        self.model(K.ones((1,) + self.output_dim_wo_batch))
+        self.model(K.ones((1,) + self.output_dim_wo_batch, dtype=keras.config.floatx()))
         self.model.trainable = False
         self.model.built = True
 
