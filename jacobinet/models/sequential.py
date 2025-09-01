@@ -1,6 +1,6 @@
 from typing import Callable, List, Optional, Union
 
-from jacobinet import get_backward_layer
+from jacobinet.layers.convert import get_backward as get_backward_layer
 from jacobinet.layers.layer import (
     BackwardLayer,
     BackwardLinearLayer,

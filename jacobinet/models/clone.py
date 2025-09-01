@@ -1,6 +1,7 @@
 from typing import List, Optional, Union
 
-from jacobinet import get_backward_layer
+from jacobinet.layers.convert import get_backward as get_backward_layer
+from jacobinet.layers.convert import get_backward as get_backward_layer
 from jacobinet.layers.layer import BackwardLayer
 from jacobinet.losses import Loss_Layer, get_backward_loss
 from jacobinet.models import BackwardModel, BackwardSequential
