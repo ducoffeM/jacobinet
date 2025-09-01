@@ -148,7 +148,10 @@ class GradConstant(Layer):
         self.input_dim_wo_batch = list(input_shape[1:])
 
     def call(self, inputs_):
+        if isinstance(inputs_, list):
+            inputs_ = inputs_[0]
         input_dim_wo_batch = inputs_.shape[1:]
+
         # avoid disconnected graph
         x = K.reshape(0.0 * inputs_, (-1, np.prod(input_dim_wo_batch)))
         x = K.sum(x, -1)

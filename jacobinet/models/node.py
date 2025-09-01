@@ -1,7 +1,7 @@
 from typing import Callable, List, Optional, Union
 
 import numpy as np
-from jacobinet import get_backward_layer
+from jacobinet.layers.convert import get_backward as get_backward_layer
 from jacobinet.layers.layer import BackwardLayer, BackwardLinearLayer
 from jacobinet.models.utils import FuseGradients, to_list
 from keras import KerasTensor as Tensor  # type:ignore
