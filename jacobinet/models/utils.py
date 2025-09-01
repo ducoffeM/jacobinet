@@ -2,12 +2,14 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 
 import keras
 import keras.ops as K  # type:ignore
+import numpy as np
 from jacobinet.layers.convert import get_backward as get_backward_layer
 from jacobinet.layers.layer import BackwardLayer, BackwardLinearLayer
 from keras import KerasTensor as Tensor
 from keras.layers import InputLayer  # type:ignore
 from keras.layers import Layer  # type:ignore
-from keras.models import Model  # type:ignore
+from keras.losses import Loss  # type:ignore
+from keras.models import Model, Sequential  # type:ignore
 
 
 def to_list(tensor: Union[Tensor, List[Tensor]]) -> List[Tensor]:
@@ -146,7 +148,13 @@ class GradConstant(Layer):
         self.input_dim_wo_batch = list(input_shape[1:])
 
     def call(self, inputs_):
-        return self.grad_const
+        input_dim_wo_batch = inputs_.shape[1:]
+        # avoid disconnected graph
+        x = K.reshape(0.0 * inputs_, (-1, np.prod(input_dim_wo_batch)))
+        x = K.sum(x, -1)
+        grad_const_dim_wo_batch = len(self.grad_const.shape[1:])
+        y = K.reshape(x, [-1] + [1] * grad_const_dim_wo_batch)
+        return y + self.grad_const
 
     def get_config(self):
         config = super().get_config()
@@ -159,7 +167,7 @@ class GradConstant(Layer):
         return config
 
     def compute_output_shape(self, input_shape):
-        return list(self.grad_const.shape)
+        return (None,) + self.grad_const.shape[1:]
 
     @classmethod
     def from_config(cls, config):
@@ -214,3 +222,137 @@ class FuseGradients(Layer):
 
     def compute_output_shape(self, input_shape):
         return input_shape[0]
+
+
+def get_model_with_loss(
+    model: Union[Model, Sequential], loss: Union[str, Loss, Layer], **kwargs
+) -> Tuple[Model, List[Tensor]]:
+    """
+    Creates a new model that computes the loss based on the given model's output and the provided ground truth.
+
+    This function takes a Keras model and adds a loss computation step to the model by incorporating
+    the ground truth input and the given loss function. It returns a new model where the output is the
+    computed loss.
+
+    Args:
+        model: A Keras model (either a `Model` or `Sequential` instance) that generates predictions.
+        loss: The loss function to be used. It can be:
+            - A string representing a built-in loss function (e.g., 'categorical_crossentropy').
+            - A `Loss` object (Keras loss class).
+            - A `Layer` object that computes the loss.
+        **kwargs: Additional keyword arguments, including:
+            - 'gt_shape': Optional, the shape of the ground truth input. If not provided, the shape is inferred from the model's output.
+
+    Returns:
+            - A Keras `Model` that takes the original model's inputs and ground truth as inputs, and outputs the computed loss.
+            - A list containing the ground truth input tensor.
+
+    Raises:
+        TypeError: If the type of the provided `loss` is not supported (i.e., not a string, `Loss` object, or `Layer`).
+        AssertionError: If the output shape of the loss is incorrect (must be a scalar, i.e., shape (None, 1)).
+
+    Example:
+        model, _ = get_model_with_loss(my_model, 'categorical_crossentropy')
+        model.compile(optimizer='adam', loss='categorical_crossentropy')
+    """
+    # duplicate inputs of the model
+
+    inputs = [Input(input_i.shape[1:]) for input_i in to_list(model.inputs)]
+
+    # groundtruth target: same shape as model.output if gt_shape undefined in kwargs
+    if "gt_shape" in kwargs:
+        gt_shape = kwargs["gt_shape"]
+    else:
+        gt_shape = to_list(model.outputs)[0].shape[1:]
+
+    gt_input = Input(gt_shape)
+
+    loss_layer: Layer
+    if isinstance(loss, str):
+        loss: Loss = deserialize(loss)
+        # convert loss which is a Loss object into a keras Layer
+        loss_layer = get_loss_as_layer(loss)
+    elif isinstance(loss, Loss):
+        # convert loss which is a Loss object into a keras Layer
+        loss_layer = get_loss_as_layer(loss)
+    elif isinstance(loss, Layer):
+        loss_layer = loss
+    else:
+        raise TypeError("unknown type for loss {}".format(loss.__class__))
+
+    # build a model: loss_layer takes as input y_true, y_pred
+    output_pred = model(inputs)
+    output_loss = loss_layer([gt_input] + to_list(output_pred))  # (None, 1)
+    output_loss_dim_wo_batch = output_loss.shape[1:]
+    assert (
+        len(output_loss_dim_wo_batch) == 1 and output_loss_dim_wo_batch[0] == 1
+    ), "Wrong output shape for model that predicts a loss, Expected [1] got {}".format(
+        output_loss_dim_wo_batch
+    )
+
+    model_with_loss: Model = keras.models.Model(inputs + [gt_input], output_loss)
+
+    return model_with_loss, [gt_input]
+
+
+def get_backward_model_with_loss(
+    model,
+    loss: Union[str, Layer] = "categorical_crossentropy",
+    mapping_keras2backward_classes={},
+    mapping_keras2backward_losses={},
+    **kwargs,
+) -> Model:  # we do not compute gradient on extra_inputs, loss should return (None, 1)
+    """
+    Constructs a backward model that includes a loss computation.
+    The model is wrapped such that the loss becomes part
+    of the model graph, allowing backpropagation through it.
+
+    Args:
+        model: A Keras model (either a `Model` or `Sequential` instance) to be used for generating adversarial examples.
+        loss: The loss function used in the model. It can be a string (e.g., 'categorical_crossentropy'), a `Layer` object,
+              or a Keras `Loss` object. Defaults to 'categorical_crossentropy'.
+        mapping_keras2backward_classes: A dictionary mapping Keras layers to their backward counterparts for gradient computation.
+        mapping_keras2backward_losses: A dictionary mapping loss functions to their backward counterparts.
+        **kwargs: Additional arguments passed to the `get_model_with_loss` function, such as `gt_shape` or other layer-specific settings.
+
+    Returns:
+        Model: A Keras `Model` that computes the backward over the composition of model and loss during training or evaluation. This model includes
+               the attack method and loss function, but does not compute gradients for extra inputs.
+
+    Raises:
+        NotImplementedError: If the model has multiple inputs or outputs, as this function currently supports single input-output models.
+
+    Example:
+        backward_base_model = get_backward_model_with_loss(model=my_model, loss='categorical_crossentropy')
+        backward_base_model.compile(optimizer='adam', loss='categorical_crossentropy')
+    """
+
+    if len(model.outputs) > 1:
+        raise NotImplementedError(
+            "actually not working wih multiple loss. Raise a dedicated PR if needed"
+        )
+    if len(model.inputs) > 1:
+        raise NotImplementedError(
+            "actually not working wih multiple inputs. Raise a dedicated PR if needed"
+        )
+
+    model_with_loss: Model
+    label_tensors: List[Tensor]
+    model_with_loss, label_tensors = get_model_with_loss(
+        model, loss, **kwargs
+    )  # to define, same for every atacks
+
+    input_mask = [label_tensor_i.name for label_tensor_i in label_tensors]
+
+    if mapping_keras2backward_classes is None:
+        mapping_keras2backward_classes = mapping_keras2backward_losses
+    elif not (mapping_keras2backward_losses is None):
+        mapping_keras2backward_classes.update(mapping_keras2backward_losses)
+
+    backward_model = clone_to_backward(
+        model=model_with_loss,
+        mapping_keras2backward_classes=mapping_keras2backward_classes,
+        gradient=keras.Variable(np.ones((1, 1), dtype="float32")),
+        input_mask=input_mask,
+    )
+    return backward_model

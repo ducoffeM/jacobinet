@@ -179,7 +179,7 @@ class BackwardLayer(Layer):
                 )
                 for input_dim_wo_batch_i in self.input_dim_wo_batch
             )
-        return (1,) + self.input_dim_wo_batch
+        return (None,) + self.input_dim_wo_batch
 
 
 @keras.saving.register_keras_serializable()

@@ -130,33 +130,25 @@ def get_adv_model_base(
             "actually not working wih multiple inputs. Raise a dedicated PR if needed"
         )
 
-    if loss == "logits____":
-        # no sense ...
-        # simple backward
-        backward_model_base_attack = clone_to_backward(
-            model=model,
-            mapping_keras2backward_classes=mapping_keras2backward_classes,
-        )
-    else:
-        model_with_loss: Model
-        label_tensors: List[Tensor]
-        model_with_loss, label_tensors = get_model_with_loss(
-            model, loss, **kwargs
-        )  # to define, same for every atacks
+    model_with_loss: Model
+    label_tensors: List[Tensor]
+    model_with_loss, label_tensors = get_model_with_loss(
+        model, loss, **kwargs
+    )  # to define, same for every atacks
 
-        input_mask = [label_tensor_i.name for label_tensor_i in label_tensors]
+    input_mask = [label_tensor_i.name for label_tensor_i in label_tensors]
 
-        if mapping_keras2backward_classes is None:
-            mapping_keras2backward_classes = mapping_keras2backward_losses
-        elif not (mapping_keras2backward_losses is None):
-            mapping_keras2backward_classes.update(mapping_keras2backward_losses)
+    if mapping_keras2backward_classes is None:
+        mapping_keras2backward_classes = mapping_keras2backward_losses
+    elif not (mapping_keras2backward_losses is None):
+        mapping_keras2backward_classes.update(mapping_keras2backward_losses)
 
-        backward_model_base_attack = clone_to_backward(
-            model=model_with_loss,
-            mapping_keras2backward_classes=mapping_keras2backward_classes,
-            gradient=keras.Variable(np.ones((1, 1), dtype="float32")),
-            input_mask=input_mask,
-        )
+    backward_model_base_attack = clone_to_backward(
+        model=model_with_loss,
+        mapping_keras2backward_classes=mapping_keras2backward_classes,
+        gradient=keras.Variable(np.ones((1, 1), dtype="float32")),
+        input_mask=input_mask,
+    )
     # convert it into an AdvModel
     return backward_model_base_attack
 
