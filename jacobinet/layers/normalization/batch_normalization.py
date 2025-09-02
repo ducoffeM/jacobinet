@@ -46,13 +46,11 @@ class BackwardBatchNormalization(BackwardLinearLayer):
         # float32 for the subsequent computations.
         gradient = ops.cast(gradient, compute_dtype)
 
-        moving_mean = ops.cast(self.layer.moving_mean, gradient.dtype)
         moving_variance = ops.cast(self.layer.moving_variance, gradient.dtype)
 
         if training and self.layer.trainable:
             mean, variance = self.layer._moments(gradient, mask)
         else:
-            mean = moving_mean
             variance = moving_variance
 
         if self.layer.scale:
@@ -60,31 +58,18 @@ class BackwardBatchNormalization(BackwardLinearLayer):
         else:
             gamma = None
 
-        if self.layer.center:
-            beta = ops.cast(self.layer.beta, gradient.dtype)
-        else:
-            beta = None
-
-        # reshape mean, variance, beta, gamme to the right shape
+        # reshape mean, variance, beta, gamma to the right shape
         input_dim_batch = [-1] + [1] * (len(gradient.shape) - 1)
         input_dim_batch[self.layer.axis] = gradient.shape[self.layer.axis]
 
-        # mean_ = ops.reshape(mean, input_dim_batch)
-        variance_ = ops.reshape(variance, input_dim_batch)
-        gamma_ = ops.reshape(gamma, input_dim_batch)
-        # beta_ = ops.reshape(beta, input_dim_batch)
+        variance = ops.reshape(variance, input_dim_batch)
+        if gamma is None:
+            gamma = 1.0
+        else:
+            gamma = ops.reshape(gamma, input_dim_batch)
 
-        mask = K.where(
-            K.abs(gamma_) < keras.config.epsilon(),
-            K.ones_like(gamma_),
-            K.zeros_like(gamma_),
-        )
-        # w = ops.sqrt(variance_ + self.layer.epsilon) / (gamma_ + mask)
-        # w = w * (1 - mask)
-        w = gamma_ / ops.sqrt(variance_ + self.layer.epsilon)
-        outputs = w * gradient
-
-        return outputs
+        w = gamma / ops.sqrt(variance + self.layer.epsilon)
+        return w * gradient
 
 
 def get_backward_BatchNormalization(layer: BatchNormalization) -> Layer:
