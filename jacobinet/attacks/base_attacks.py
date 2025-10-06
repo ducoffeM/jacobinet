@@ -280,3 +280,6 @@ class AdvModel(keras.Model):
 
     def get_p(self, p):
         return self.layer_adv.get_p()
+
+    def compute_output_shape(self, input_shape):
+        return input_shape[0]

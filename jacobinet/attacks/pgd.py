@@ -59,7 +59,6 @@ class PGD_Cell(keras.Layer):
         if len(states) > 2:
             adv_x = K.maximum(adv_x, lower)
             adv_x = K.minimum(adv_x, upper)
-
         return adv_x, [adv_x, x_init] + list(states[2:])
 
 
@@ -133,7 +132,8 @@ class ProjectedGradientDescent(AdvLayer):
         self.p = self.fgsm_layer.p
 
     def compute_output_shape(self, input_shape):
-        return input_shape[0]
+        input_dim_with_batch: tuple[int] = input_shape[0]
+        return (input_dim_with_batch[0], self.n_iter) + input_dim_with_batch[1:]
 
     def call(self, inputs, training=None, mask=None):
         x, y = inputs[:2]
@@ -158,8 +158,9 @@ class ProjectedGradientDescent(AdvLayer):
             x_0 = K.minimum(x_0, self.upper)
         else:
             x_0 = x
+        output = self.inner_layer(z, initial_state=[x_0, x] + inputs[2:])
 
-        return self.inner_layer(z, initial_state=[x_0, x] + inputs[2:])
+        return output
 
 
 def get_pgd_model(
