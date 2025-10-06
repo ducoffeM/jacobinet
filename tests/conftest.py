@@ -235,9 +235,9 @@ def get_toy_model_functional(input_shape_wo_batch, output_dim_wo_batch):
     layers = [
         Dense(784),
         Reshape((1, 28, 28)),
-        Conv2D(64, kernel_size=(3, 3), activation="relu"),
+        Conv2D(64, kernel_size=(3, 3), activation="relu", data_format="channels_first"),
         # layers.MaxPooling2D(pool_size=(2, 2)),
-        Conv2D(64, kernel_size=(3, 3), activation="relu"),
+        Conv2D(64, kernel_size=(3, 3), activation="relu", data_format="channels_first"),
         # layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
         Flatten(),
         Dense(output_dim_wo_batch),
