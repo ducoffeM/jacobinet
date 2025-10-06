@@ -168,9 +168,16 @@ class GradConstant(Layer):
             }
         )
         return config
-
+    
     def compute_output_shape(self, input_shape):
-        return (None,) + self.grad_const.shape[1:]
+        # Explicitly get the batch size from the input shape (this is often None)
+        batch_size = input_shape[0][:1] 
+    
+        # Get the shape of your constant, excluding its first dimension
+        const_shape = self.grad_const.shape[1:]
+    
+        # Combine them using standard tuples to ensure type compatibility
+        return batch_size + tuple(const_shape)
 
     @classmethod
     def from_config(cls, config):
