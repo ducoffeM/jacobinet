@@ -96,11 +96,18 @@ def serialize_model(list_input_dim, backward_model):
     )
 
 
-def compute_backward_layer(input_shape, model, backward_model, input_random=False):
+def compute_backward_layer(
+    input_shape, model, backward_model, input_random=False, clip_min=-np.inf, clip_max=np.inf
+):
     if input_random:
         input_ = torch.randn(1, input_shape[0], requires_grad=True)
     else:
         input_ = torch.ones((1, input_shape[0]), requires_grad=True)
+
+    # input_ = torch.clamp(input_, clip_min, clip_max)
+    # Clamp input_init in-place (this keeps the leaf tensor)
+    with torch.no_grad():
+        input_.clamp_(clip_min, clip_max)
 
     output = model(input_)
     select_output = output[0, 0]

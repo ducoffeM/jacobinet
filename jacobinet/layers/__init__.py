@@ -6,6 +6,26 @@ from jacobinet.layers.convolutional import (
     BackwardDepthwiseConv2D,
 )
 from jacobinet.layers.core import BackwardActivation, BackwardDense, BackwardEinsumDense
+from jacobinet.layers.custom import (
+    BackwardAbs,
+    get_backward_Abs,
+    get_backward_Absolute,
+    get_backward_Arccos,
+    get_backward_Arccosh,
+    get_backward_Arcsin,
+    get_backward_Arcsinh,
+    get_backward_Arctan,
+    get_backward_Arctanh,
+    get_backward_Cos,
+    get_backward_Cosh,
+    get_backward_Log,
+    get_backward_Log1p,
+    get_backward_Log2,
+    get_backward_Log10,
+    get_backward_Sqrt,
+    get_backward_Square,
+    get_backward_Tan,
+)
 from jacobinet.layers.normalization import BackwardBatchNormalization
 from jacobinet.layers.pooling import (
     BackwardAveragePooling1D,

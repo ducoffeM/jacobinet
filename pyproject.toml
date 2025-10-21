@@ -12,7 +12,7 @@ authors = [
 requires-python = ">=3.9"
 dependencies =[
     "keras>=3",
-    "keras_custom@git+https://github.com/ducoffeM/keras_custom"
+    "keras_custom"
 ]
 license = {text = "MIT"}
 dynamic = ["version"]

@@ -1,9 +1,18 @@
 import logging
 from typing import Any, Callable, Optional
 
+# custom layers
 from jacobinet.layers import (  # merging
+    get_backward_Abs,
+    get_backward_Absolute,
     get_backward_Activation,
     get_backward_Add,
+    get_backward_Arccos,
+    get_backward_Arccosh,
+    get_backward_Arcsin,
+    get_backward_Arcsinh,
+    get_backward_Arctan,
+    get_backward_Arctanh,
     get_backward_Average,
     get_backward_AveragePooling1D,
     get_backward_AveragePooling2D,
@@ -12,6 +21,8 @@ from jacobinet.layers import (  # merging
     get_backward_Concatenate,
     get_backward_Conv1D,
     get_backward_Conv2D,
+    get_backward_Cos,
+    get_backward_Cosh,
     get_backward_Cropping1D,
     get_backward_Cropping2D,
     get_backward_Cropping3D,
@@ -26,6 +37,10 @@ from jacobinet.layers import (  # merging
     get_backward_GlobalAveragePooling3D,
     get_backward_GlobalMaxPooling2D,
     get_backward_LeakyReLU,
+    get_backward_Log,
+    get_backward_Log1p,
+    get_backward_Log2,
+    get_backward_Log10,
     get_backward_Maximum,
     get_backward_MaxPooling2D,
     get_backward_Minimum,
@@ -37,7 +52,10 @@ from jacobinet.layers import (  # merging
     get_backward_Reshape,
     get_backward_SeparableConv1D,
     get_backward_SeparableConv2D,
+    get_backward_Sqrt,
+    get_backward_Square,
     get_backward_Subtract,
+    get_backward_Tan,
     get_backward_UpSampling1D,
     get_backward_UpSampling2D,
     get_backward_UpSampling3D,
@@ -90,6 +108,25 @@ from keras.layers import (  # type:ignore
     ZeroPadding1D,
     ZeroPadding2D,
     ZeroPadding3D,
+)
+from keras_custom.layers.numpy import (
+    Abs,
+    Absolute,
+    Arccos,
+    Arccosh,
+    Arcsin,
+    Arcsinh,
+    Arctan,
+    Arctanh,
+    Cos,
+    Cosh,
+    Log,
+    Log1p,
+    Log2,
+    Log10,
+    Sqrt,
+    Square,
+    Tan,
 )
 
 logger = logging.getLogger(__name__)
@@ -146,6 +183,24 @@ default_mapping_keras2backward_layer: dict[type[Layer], Callable[..., Any]] = {
     Maximum: get_backward_Maximum,
     Minimum: get_backward_Minimum,
     Multiply: get_backward_Multiply,
+    # custom
+    Abs: get_backward_Abs,
+    Absolute: get_backward_Absolute,
+    Arccos: get_backward_Arccos,
+    Arccosh: get_backward_Arccosh,
+    Arcsin: get_backward_Arcsin,
+    Arcsinh: get_backward_Arcsinh,
+    Arctan: get_backward_Arctan,
+    Arctanh: get_backward_Arctanh,
+    Cos: get_backward_Cos,
+    Cosh: get_backward_Cosh,
+    Log: get_backward_Log,
+    Log10: get_backward_Log10,
+    Log1p: get_backward_Log1p,
+    Log2: get_backward_Log2,
+    Sqrt: get_backward_Sqrt,
+    Square: get_backward_Square,
+    Tan: get_backward_Tan,
 }
 """Default mapping between keras layers and get_backward callable"""
 
