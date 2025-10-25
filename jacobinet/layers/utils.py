@@ -1,6 +1,8 @@
 from typing import Callable, List, Tuple, Union
 
+import keras
 import keras.ops as K  # type:ignore
+import numpy as np
 from jacobinet.utils import to_tuple
 from keras import KerasTensor as Tensor
 from keras.layers import (  # type:ignore
@@ -399,3 +401,38 @@ def share_weights_and_build(
             setattr(new_layer, w_name, w)
         # untrack the not used anymore weight
         new_layer._tracker.untrack(w_to_drop)
+
+
+def get_W(layer: Layer, input_dim: int) -> Tensor:
+    """
+    Numerically estimate the weight matrix W of a linear layer
+    by probing it with one-hot vectors.
+
+    Args:
+        layer: A linear layer (Dense-like) with call(x) = W x + b
+        input_dim: Dimensionality of the input space.
+
+    Returns:
+        W: The reconstructed weight matrix of shape (output_dim, input_dim).
+    """
+    # Compute bias first
+    b = get_b(layer, input_dim)  # shape: (output_dim,)
+
+    # Build one-hot input basis
+    n: int = np.prod(input_dim)
+    eye = K.reshape(
+        K.eye(n, dtype=keras.backend.floatx()), (n,) + input_dim
+    )  # (input_dim, input_dim)
+    outputs = layer(eye)  # (n, output_dim)
+
+    # Subtract bias
+    W = outputs - b[None]
+    return W  # (n, output_dim)
+
+
+def get_b(layer: Layer, input_dim: int) -> Tensor:
+    """
+    Estimate the bias vector b = layer(0)
+    """
+    zero_input = K.zeros((1,) + input_dim)
+    return layer(zero_input)[0]

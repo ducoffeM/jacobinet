@@ -97,27 +97,56 @@ def serialize_model(list_input_dim, backward_model):
 
 
 def compute_backward_layer(
-    input_shape, model, backward_model, input_random=False, clip_min=-np.inf, clip_max=np.inf
+    input_shape,
+    model,
+    backward_model,
+    input_random=False,
+    clip_min=-np.inf,
+    clip_max=np.inf,
+    name="",
+    index=0,
 ):
-    if input_random:
-        input_ = torch.randn(1, input_shape[0], requires_grad=True)
+    output_shape = model.output_shape[1:]
+
+    if len(input_shape) == 1:
+        if input_random:
+            input_ = torch.randn(1, input_shape[0], requires_grad=True)
+        else:
+            input_ = torch.ones((1, input_shape[0]), requires_grad=True)
     else:
-        input_ = torch.ones((1, input_shape[0]), requires_grad=True)
+        if input_random:
+            input_ = torch.randn(1, input_shape[0], input_shape[1], requires_grad=True)
+        else:
+            input_ = torch.ones((1, input_shape[0], input_shape[1]), requires_grad=True)
 
     # input_ = torch.clamp(input_, clip_min, clip_max)
     # Clamp input_init in-place (this keeps the leaf tensor)
     with torch.no_grad():
         input_.clamp_(clip_min, clip_max)
-
     output = model(input_)
-    select_output = output[0, 0]
+
+    mask_output_np = np.zeros(output_shape)
+    index = min(index, output_shape[-1] - 1)
+    if len(output_shape) == 1:
+        mask_output_np[index] = 1
+        select_output = output[0, index]
+    else:
+        mask_output_np[0, index] = 1
+        select_output = output[0, 0, index]
+
+    # mask_output = torch.Tensor([1] + [0] * 31)[None]
+    mask_output = torch.Tensor(mask_output_np)[None]
+    gradient_ = backward_model([mask_output, input_]).cpu().detach().numpy()
+
     select_output.backward()
     gradient = input_.grad.cpu().detach().numpy()
 
-    mask_output = torch.Tensor([1] + [0] * 31)[None]
+    try:
+        assert_almost_equal(gradient, gradient_, decimal=4, err_msg="{}".format(name))
+    except:
+        import pdb
 
-    gradient_ = backward_model([mask_output, input_]).cpu().detach().numpy()
-    assert_almost_equal(gradient, gradient_)
+        pdb.set_trace()
 
 
 def compute_backward_model(

@@ -3,7 +3,12 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import keras
 import keras.ops as K  # type:ignore
-from jacobinet.layers.utils import reshape_to_batch, share_weights_and_build
+from jacobinet.layers.utils import (
+    get_b,
+    get_W,
+    reshape_to_batch,
+    share_weights_and_build,
+)
 from jacobinet.utils import to_tuple
 from keras import KerasTensor as Tensor
 from keras.layers import Activation, Input, Layer  # type:ignore
@@ -115,6 +120,7 @@ class BackwardLayer(Layer):
                 layer_input = inputs[1]
             elif len(inputs) > 2:
                 layer_input = inputs[1:]
+
         reshape_tag, gradient_, n_out = reshape_to_batch(gradient, (1,) + self.output_dim_wo_batch)
         output = self.call_on_reshaped_gradient(
             gradient_, input=layer_input, training=training, mask=mask
@@ -184,6 +190,7 @@ class BackwardLayer(Layer):
 
 @keras.saving.register_keras_serializable()
 class BackwardLinearLayer(BackwardLayer):
+    use_W_numerically: bool = False
     """
     A custom Keras wrapper layer that reverses the operations of a given layer.
 
@@ -208,6 +215,60 @@ class BackwardLinearLayer(BackwardLayer):
       reverses the application of operations as defined by the wrapped layer.
     - It requires the wrapped layer to have compatible reverse operations.
     """
+
+    def __init__(
+        self,
+        layer: Layer,
+        input_dim_wo_batch: Union[None, Tuple[int]] = None,
+        output_dim_wo_batch: Union[None, Tuple[int]] = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            layer=layer,
+            input_dim_wo_batch=input_dim_wo_batch,
+            output_dim_wo_batch=output_dim_wo_batch,
+            **kwargs,
+        )
+
+        if self.use_W_numerically:
+            self.W = get_W(layer, self.input_dim_wo_batch)
+            self.b = get_b(layer, self.input_dim_wo_batch)
+
+    def call_on_reshaped_gradient(
+        self,
+        gradient: Tensor,
+        input: Optional[Tensor] = None,
+        training: Optional[bool] = None,
+        mask: Optional[Tensor] = None,
+    ) -> Union[Tensor, List[Tensor]]:
+        if self.layer_backward:
+            return self.layer_backward(gradient)
+        if self.use_W_numerically:
+            return self.call_on_reshaped_gradient_linear(
+                gradient=gradient, training=training, mask=mask
+            )
+        return NotImplementedError()
+
+    def call_on_reshaped_gradient_linear(
+        self,
+        gradient: Tensor,
+        training: Optional[bool] = None,
+        mask: Optional[Tensor] = None,
+    ) -> Tensor:
+        if gradient is None:
+            raise ValueError("Gradient tensor is required for BackwardLinear.")
+        if input is None:
+            raise ValueError("Input tensor is required for BackwardLinear.")
+
+        # --- Compute input gradient: dL/dx = Wᵀ @ dL/dy ---
+
+        gradient = K.expand_dims(gradient, 1)
+        grad_input = gradient * self.W[None]
+        n_dim = K.ndim(grad_input)
+
+        grad_input = K.sum(grad_input, axis=[i + 2 for i in range(n_dim - 2)], keepdims=False)
+
+        return K.reshape(grad_input, (-1,) + self.input_dim_wo_batch)
 
 
 @keras.saving.register_keras_serializable()
