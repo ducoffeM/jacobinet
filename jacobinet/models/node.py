@@ -16,6 +16,7 @@ def get_backward_node(
     mapping_keras2backward_classes: Optional[dict[type[Layer], type[BackwardLayer]]] = None,
     input_name=None,
     get_backward: Callable = get_backward_layer,
+    **kwargs
 ):
     """
     Recursively computes the backward gradients for a given node in a computational graph.
@@ -49,18 +50,32 @@ def get_backward_node(
         output, is_linear, keep_output = get_backward_node(node, gradient, mapping_keras2backward_classes)
         ```
     """
+
     # step 1: get parents
     parent_nodes: List[None] = node.parent_nodes
 
     # step 2: get layer from node
     layer_node: Union[Layer, Model, Sequential] = node.operation
 
+    if 'dico_node' in kwargs.keys():
+        dico_node = kwargs['dico_node']
+        if id(node) not in dico_node.keys():
+            dico_node=dict()
+            dico_node[id(node)] = dict()
+        if id(node) in dico_node.keys() and id(gradient) in dico_node[id(node)]:
+            return dico_node[id(node)][id(gradient)]
+    else:
+        dico_node=dict()
+        dico_node[id(node)] = dict()
+
     # step 3.1 if layer is an InputLayer stop the algorithm
     if isinstance(layer_node, InputLayer):
         # check we reach the right input
         if input_name is None:
+            dico_node[id(node)][id(gradient)] = (gradient, True, True)
             return gradient, True, True
         else:
+            dico_node[id(node)][id(gradient)] = (gradient, True, layer_node.output.name == input_name)
             return gradient, True, layer_node.output.name == input_name
 
     # step 4: get backward layer
@@ -71,6 +86,7 @@ def get_backward_node(
 
     is_linear = True
     if isinstance(backward_layer_node, BackwardLinearLayer):
+        # input is not required
         gradients = backward_layer_node(gradient)
     elif isinstance(layer_node, Sequential):
         if backward_layer_node.is_linear:
@@ -102,8 +118,10 @@ def get_backward_node(
         if isinstance(gradients, list):
             # do something
             index_grad = np.where([e.name == input_name for e in layer_inputs])[0]
+            dico_node[id(node)][id(gradient)] = (gradients[index_grad], is_linear, keep_output)
             return gradients[index_grad], is_linear, keep_output
         else:
+            dico_node[id(node)][id(gradient)] = (gradients, is_linear, keep_output)
             return gradients, is_linear, keep_output
 
     if backward_layer_node.n_input != 1:
@@ -114,6 +132,7 @@ def get_backward_node(
                 mapping_keras2backward_classes,
                 input_name,
                 get_backward=get_backward,
+                dico_node=dico_node
             )
             for (p_node, p_grad) in zip(parent_nodes, gradients)
         ]
@@ -137,16 +156,19 @@ def get_backward_node(
             is_linear = False
             keep_output = False
     else:
+
         result = get_backward_node(
             parent_nodes[0],
             gradients,
             mapping_keras2backward_classes,
             input_name,
             get_backward=get_backward,
+            dico_node=dico_node
         )
         output = result[0]
         keep_output = result[-1]
         if is_linear:
             is_linear = min(is_linear, result[1])
 
+    dico_node[id(node)][id(gradient)] = (output, is_linear, keep_output)
     return output, is_linear, keep_output

@@ -52,6 +52,7 @@ def clone_to_backward(
 
     def get_backward(layer, mapping_keras2backward_classes, **kwargs):
         if isinstance(layer, Sequential):
+
             if not input_mask is None:
                 input_mask_ = to_list(input_mask)
                 if layer.input.name in input_mask_:
@@ -64,6 +65,7 @@ def clone_to_backward(
                 get_backward=get_backward,
             )
         elif isinstance(layer, Model):
+
             return get_backward_functional(
                 model=layer,
                 mapping_keras2backward_classes=mapping_keras2backward_classes,
@@ -80,6 +82,7 @@ def clone_to_backward(
             raise ValueError("unsupported object layer={}".format(layer))
 
     if isinstance(model, Sequential):
+
         if not input_mask is None:
             raise NotImplementedError()
         backward_model = get_backward_sequential(
@@ -91,6 +94,7 @@ def clone_to_backward(
         )
         # backward_model.set_model(model)
     else:
+
         backward_model = get_backward_functional(
             model,
             gradient,

@@ -141,3 +141,5 @@ from .reshaping import (
     get_backward_ZeroPadding2D,
     get_backward_ZeroPadding3D,
 )
+
+from .regularization import get_backward_Dropout

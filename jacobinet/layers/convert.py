@@ -91,6 +91,7 @@ from jacobinet.layers import (  # merging
     get_backward_ZeroPadding2D,
     get_backward_ZeroPadding3D,
     get_backward_ZerosLike,
+    get_backward_Dropout
 )
 from jacobinet.layers.layer import BackwardLayer
 from keras.layers import (  # type:ignore
@@ -137,6 +138,7 @@ from keras.layers import (  # type:ignore
     ZeroPadding1D,
     ZeroPadding2D,
     ZeroPadding3D,
+    Dropout
 )
 from keras_custom.layers.numpy import (  # Average,
     Abs,
@@ -289,6 +291,7 @@ default_mapping_keras2backward_layer: dict[type[Layer], Callable[..., Any]] = {
     SwapAxes: get_backward_SwapAxes,
     Transpose: get_backward_Transpose,
     MoveAxis: get_backward_MoveAxis,
+    Dropout: get_backward_Dropout
 }
 """Default mapping between keras layers and get_backward callable"""
 

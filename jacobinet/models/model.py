@@ -85,6 +85,7 @@ def get_backward_functional(
 
     output_nodes = []
     for model_output in model_outputs:
+
         node_index = model_output._keras_history.node_index
         nodes = model._nodes_by_depth[node_index]
         try:
@@ -126,12 +127,14 @@ def get_backward_functional(
 
     # for input_ in model_inputs:
     for input_ in target_inputs:
+
         input_name = input_.name
         if not input_name in input_mask:
             outputs_i = []
             is_linear_i = True
 
-            for i, (grad, output_node) in enumerate(zip(gradient, output_nodes)):
+            for _, (grad, output_node) in enumerate(zip(gradient, output_nodes)):
+
                 output_node, is_linear_node, keep_branch = get_backward_node(
                     output_node,
                     grad,
@@ -139,6 +142,7 @@ def get_backward_functional(
                     input_name=input_name,
                     get_backward=get_backward,
                 )
+
                 if keep_branch:
                     outputs_i.append(output_node)
                     is_linear_i = min(is_linear_i, is_linear_node)

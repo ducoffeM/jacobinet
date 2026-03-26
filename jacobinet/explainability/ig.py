@@ -66,7 +66,6 @@ class IG(Layer):
         x = inputs[0]
         n_dim_without_batch = len(x.shape[1:])
         z = keras.ops.reshape(z, [1, self.steps] + [1] * n_dim_without_batch)
-        z = keras.ops.expand_dims(0.0 * x, 1)
         output = self.inner_layer(z, initial_state=inputs[:3])
         # apply integral, aka empirical mean along
         import pdb
